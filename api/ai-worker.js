@@ -2,6 +2,7 @@
 import OpenAI from "openai";
 import { Client as NotionClient } from "@notionhq/client";
 
+// === Clients ===
 const ai = new OpenAI({
   apiKey: process.env.DEEPSEEK_API_KEY,
   baseURL: process.env.DEEPSEEK_BASE_URL || "https://api.deepseek.com/v1"
@@ -10,7 +11,7 @@ const ai = new OpenAI({
 const notion = new NotionClient({ auth: process.env.NOTION_TOKEN });
 const RES_DB = process.env.RESOURCES_DB_ID;
 
-// Friendly pacing for Notion (avoid 429)
+// === Helpers ===
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const buildPrompt = ({ title, url, notes }) => `
@@ -59,17 +60,24 @@ async function setStatus(page_id, name) {
 }
 
 async function updateAIFields(page_id, { summary, insights, tags }) {
-  const insightsText = (insights || []).filter(Boolean).map(i => `• ${i}`).join("\n");
+  const insightsText = (insights || [])
+    .filter(Boolean)
+    .map(i => `• ${i}`)
+    .join("\n");
 
-  // Use Text version by default (simple & robust).
-  // If you made "AI Suggested Tags" a Multi-select, see commented code below.
   const props = {
-    "AI Summary": { rich_text: [{ type: "text", text: { content: (summary || "").slice(0, 800) } }] },
-    "AI Insights": { rich_text: [{ type: "text", text: { content: insightsText } }] },
-    "AI Suggested Tags": { rich_text: [{ type: "text", text: { content: (tags || []).join(", ") } }] }
+    "AI Summary": {
+      rich_text: [{ type: "text", text: { content: (summary || "").slice(0, 800) } }]
+    },
+    "AI Insights": {
+      rich_text: [{ type: "text", text: { content: insightsText } }]
+    },
+    "AI Suggested Tags": {
+      rich_text: [{ type: "text", text: { content: (tags || []).join(", ") } }]
+    }
   };
 
-  // If you prefer Multi-select:
+  // If your "AI Suggested Tags" property is Multi-select instead of Text:
   // props["AI Suggested Tags"] = { multi_select: (tags || []).map(t => ({ name: t })) };
 
   await notion.pages.update({ page_id, properties: props });
@@ -99,7 +107,6 @@ async function runOnce() {
 
       let content = completion.choices[0].message.content.trim();
 
-      // Safe JSON parse
       let data;
       try {
         data = JSON.parse(content);
@@ -123,6 +130,7 @@ async function runOnce() {
   return results;
 }
 
+// === Vercel handler ===
 export default async function handler(req, res) {
   try {
     const results = await runOnce();
