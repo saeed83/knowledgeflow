@@ -1,0 +1,8 @@
+{
+  "name": "knowledgeflow-deepseek-worker",
+  "type": "module",
+  "dependencies": {
+    "@notionhq/client": "^2.2.14",
+    "openai": "^4.57.0"
+  }
+}
